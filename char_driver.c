@@ -10,7 +10,7 @@
 static int major;
 static int minor;
 static dev_t device_number;
-static struct class *cl;
+static struct class *cl = NULL;
 
 static int start_here(void)
 {
@@ -22,30 +22,35 @@ static int start_here(void)
 		printk(KERN_WARNING"gettting the device major number failed\n");
 		return -1;
 	}
+
 	major = MAJOR(device_number);
 	minor = MINOR(device_number);
-	
+
 	cl = class_create(THIS_MODULE, "my_char");
 
 	if (cl == NULL)
-		unregister_chrdev_region(device_number, 1);
-	
-	if (device_create(cl, NULL, device_number, NULL, DEVICE) == NULL) {
-		class_destroy(cl);
-		unregister_chrdev_region(device_number, 1);
-	}
+		goto fail;
 
-		
+	if (device_create(cl, NULL, device_number, NULL, DEVICE) == NULL)
+		goto fail1;
+
 	return 0;
+
+fail1:
+	class_destroy(cl);
+
+fail:
+	unregister_chrdev_region(device_number, 1);
+	return -1;
 }
 
 
 static void end_here(void)
 {
+	printk(KERN_INFO"Going out of this bloody world\n");
 	device_destroy(cl, device_number);
 	class_destroy(cl);
 	unregister_chrdev_region(device_number, 1);
-	printk(KERN_INFO"good bye world\n");
 }
 
 MODULE_LICENSE("GPL");
