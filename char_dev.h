@@ -3,7 +3,7 @@
 #include <linux/cdev.h>
 
 struct my_device {
-	char *message;
+	char message[4096];
 	unsigned long size;
 	struct cdev char_device;
 };
