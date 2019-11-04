@@ -8,7 +8,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 
-#define DEVICE "sameer_char"
+#define DEVICE "chardev_char"
 #define CLS "my_char"
 #define BUFFER 4096
 
@@ -16,7 +16,7 @@ static dev_t device_number;
 static struct class *cl = NULL;
 static struct my_device *my_device_1;
 
-static int sameer_open(struct inode *inode, struct file *filp)
+static int chardev_open(struct inode *inode, struct file *filp)
 {
 	struct my_device *dev;
 	dev = container_of(inode->i_cdev, struct my_device, char_device);
@@ -25,7 +25,7 @@ static int sameer_open(struct inode *inode, struct file *filp)
 
 	return 0;
 }
-static loff_t sameer_seek(struct file *filp, loff_t offset, int whence)
+static loff_t chardev_seek(struct file *filp, loff_t offset, int whence)
 {
 	struct my_device *dev = filp->private_data;
 	loff_t newpos;
@@ -53,7 +53,7 @@ static loff_t sameer_seek(struct file *filp, loff_t offset, int whence)
 	
 	return newpos;
 }
-static ssize_t sameer_read(struct file *filp, char __user *buf, size_t count,
+static ssize_t chardev_read(struct file *filp, char __user *buf, size_t count,
 			   loff_t *pos)
 {
 	int ret;
@@ -80,7 +80,7 @@ out:
 	return ret;
 }
 
-static ssize_t sameer_write(struct file *filp, const char __user *buf, size_t
+static ssize_t chardev_write(struct file *filp, const char __user *buf, size_t
 			    count, loff_t *pos)
 {
 	struct my_device *dev = (struct my_device *)filp->private_data;
@@ -108,7 +108,7 @@ out:
 	return ret;
 }
 
-static int sameer_close(struct inode *inode, struct file *filp)
+static int chardev_close(struct inode *inode, struct file *filp)
 {
 	/* struct my_device *dev = filp->private_data;
 	kfree(dev->message); */
@@ -116,11 +116,11 @@ static int sameer_close(struct inode *inode, struct file *filp)
 }
 
 static struct file_operations sops = {
-	.open = sameer_open,
-	.read = sameer_read,
-	.write = sameer_write,
-	.llseek = sameer_seek,
-	.release = sameer_close,
+	.open = chardev_open,
+	.read = chardev_read,
+	.write = chardev_write,
+	.llseek = chardev_seek,
+	.release = chardev_close,
 	.owner = THIS_MODULE
 };
 
@@ -139,6 +139,8 @@ static int start_here(void)
 
 	if (IS_ERR(my_device_1))
 		goto fail;
+
+	my_device_1->message = kzalloc(sizeof(char) * BUFFER, GFP_KERNEL);
 
 	my_device_1->size = BUFFER;
 
@@ -166,6 +168,7 @@ static int start_here(void)
 
 fail1:
 	class_destroy(cl);
+	kfree(my_device_1->message);
 	kfree(my_device_1);
 fail:
 	unregister_chrdev_region(device_number, 1);
@@ -178,6 +181,7 @@ static void end_here(void)
 	device_destroy(cl, device_number);
 	class_destroy(cl);
 	unregister_chrdev_region(device_number, 1);
+	kfree(my_device_1->message);
 	kfree(my_device_1);
 	printk(KERN_INFO"Going out of this bloody world\n");
 		
