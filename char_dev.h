@@ -5,6 +5,7 @@
 struct my_device {
 	char *message;
 	unsigned long size;
+	loff_t retain_off;
 	struct cdev char_device;
 };
 

@@ -16,15 +16,7 @@ static dev_t device_number;
 static struct class *cl = NULL;
 static struct my_device *my_device_1;
 
-static int chardev_open(struct inode *inode, struct file *filp)
-{
-	struct my_device *dev;
-	dev = container_of(inode->i_cdev, struct my_device, char_device);
 
-	filp->private_data = dev;
-
-	return 0;
-}
 static loff_t chardev_seek(struct file *filp, loff_t offset, int whence)
 {
 	struct my_device *dev = filp->private_data;
@@ -59,15 +51,12 @@ static ssize_t chardev_read(struct file *filp, char __user *buf, size_t count,
 	int ret;
 	struct my_device *dev = (struct my_device *)filp->private_data;
 
-	if (filp->f_pos + count > dev->size) {
-		printk(KERN_INFO "its passing this case\n");
-		count = dev->size - filp->f_pos;
+	if (*pos + count > dev->size) {
+		printk(KERN_INFO "count is equal to 4096");
+		count = dev->size - *pos;
 	}
-	if (count > dev->size)
-		count = dev->size;
 	
-	printk("The file_pos is %lld\t count is %d\n", filp->f_pos, count);
-	if (copy_to_user(buf, (dev->message + filp->f_pos), count)) {
+	if (copy_to_user(buf, (dev->message + *pos), count)) {
 		printk(KERN_WARNING"copying to the userspace failed\n");
 		ret = -EFAULT;
 		goto out;
@@ -75,7 +64,7 @@ static ssize_t chardev_read(struct file *filp, char __user *buf, size_t count,
 
 	*pos += count;
 	ret = count;
-	printk("The pos is %lld\t count is %d\n", *pos, count);
+	printk("The fpos is %lld\t count is %d\n", filp->f_pos, count);
 out:
 	return ret;
 }
@@ -92,7 +81,7 @@ static ssize_t chardev_write(struct file *filp, const char __user *buf, size_t
 		goto out;
 	}
 		
-	printk(KERN_INFO"The offset is %lld, count = %d\n", *pos, count);
+	printk(KERN_INFO"The offset is %lld, count = %d\n", filp->f_pos, count);
 
 	if(copy_from_user((dev->message + *pos), buf, count)) {
 		printk(KERN_WARNING"Copying from the user space failed\n");
@@ -101,13 +90,30 @@ static ssize_t chardev_write(struct file *filp, const char __user *buf, size_t
 	}
 
 
-	*pos +=  count;
+	*pos =  count;
+	dev->retain_off = *pos;
 	ret = count;
 
 out:
 	return ret;
 }
 
+static int chardev_open(struct inode *inode, struct file *filp)
+{
+	struct my_device *dev;
+	dev = container_of(inode->i_cdev, struct my_device, char_device);
+
+	filp->private_data = dev;
+
+	printk(KERN_ERR"The residual offset %lu\n", dev->retain_off);
+
+	if ((filp->f_mode) == O_APPEND) {
+		printk(KERN_ERR"The file offset %lu\n", filp->f_pos);
+		chardev_seek(filp, filp->f_pos, 2);/* this needs to be modified*/
+	}
+
+	return 0;
+}
 static int chardev_close(struct inode *inode, struct file *filp)
 {
 	/* struct my_device *dev = filp->private_data;
