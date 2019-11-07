@@ -12,7 +12,7 @@ int main(void)
 	int ret;
 	
 	len = strlen(message);
-	fd = open("/dev/chardev_char", O_APPEND);
+	fd = open("/dev/chardev_char", O_RDWR);
 
 	if (fd == -1) {
 		printf("unable to open the file\n");

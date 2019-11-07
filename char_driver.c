@@ -90,8 +90,8 @@ static ssize_t chardev_write(struct file *filp, const char __user *buf, size_t
 	}
 
 
-	*pos =  count;
-	dev->retain_off = *pos;
+	*pos +=  count;
+	dev->retain_off += *pos;
 	ret = count;
 
 out:
@@ -107,9 +107,9 @@ static int chardev_open(struct inode *inode, struct file *filp)
 
 	printk(KERN_ERR"The residual offset %lu\n", dev->retain_off);
 
-	if ((filp->f_mode) == O_APPEND) {
+	if ((filp->f_mode & O_ACCMODE) == O_RDWR) {
 		printk(KERN_ERR"The file offset %lu\n", filp->f_pos);
-		chardev_seek(filp, filp->f_pos, 2);/* this needs to be modified*/
+		chardev_seek(filp, dev->retain_off, 1);/* this needs to be modified*/
 	}
 
 	return 0;
