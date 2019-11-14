@@ -1,4 +1,4 @@
-obj-m := char_driver.o
+obj-m := char_driver.o kthreads.o
 
 KERNEL_DIR := /lib/modules/$(shell uname -r)/build/
 

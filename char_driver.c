@@ -107,7 +107,7 @@ static int chardev_open(struct inode *inode, struct file *filp)
 
 	printk(KERN_ERR"The residual offset %lu\n", dev->retain_off);
 
-	if ((filp->f_mode & O_ACCMODE) == O_RDWR) {
+	if ((filp->f_mode & O_ACCMODE) == O_APPEND) {
 		printk(KERN_ERR"The file offset %lu\n", filp->f_pos);
 		chardev_seek(filp, dev->retain_off, 1);/* this needs to be modified*/
 	}
