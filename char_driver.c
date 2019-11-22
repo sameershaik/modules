@@ -51,6 +51,8 @@ static ssize_t chardev_read(struct file *filp, char __user *buf, size_t count,
 	int ret;
 	struct my_device *dev = (struct my_device *)filp->private_data;
 
+	if (down_interruptible(&dev->char_sem))
+		return -EINTR;
 	if (*pos + count > dev->size) {
 		printk(KERN_INFO "count is equal to 4096");
 		count = dev->size - *pos;
@@ -66,6 +68,7 @@ static ssize_t chardev_read(struct file *filp, char __user *buf, size_t count,
 	ret = count;
 	printk("The fpos is %lld\t count is %d\n", filp->f_pos, count);
 out:
+	up(&dev->char_sem);
 	return ret;
 }
 
@@ -75,26 +78,28 @@ static ssize_t chardev_write(struct file *filp, const char __user *buf, size_t
 	struct my_device *dev = (struct my_device *)filp->private_data;
 	int ret;
 	
+	if(down_interruptible(&dev->char_sem))
+	   return -EINTR;
 	if (*pos + count > dev->size) {
-		printk(KERN_WARNING"writing to this device will cause the\
+		   printk(KERN_WARNING"writing to this device will cause the\
 		       overflow\n");
-		goto out;
+		   goto out;
 	}
-		
+	
 	printk(KERN_INFO"The offset is %lld, count = %d\n", filp->f_pos, count);
-
+	   
 	if(copy_from_user((dev->message + *pos), buf, count)) {
-		printk(KERN_WARNING"Copying from the user space failed\n");
-		ret = -EFAULT;
-		goto out;
+		   printk(KERN_WARNING"Copying from the user space failed\n");
+		   ret = -EFAULT;
+		   goto out;
 	}
-
-
+	
+	
 	*pos +=  count;
 	dev->retain_off += *pos;
 	ret = count;
-
 out:
+	up(&dev->char_sem);
 	return ret;
 }
 
@@ -162,6 +167,7 @@ static int start_here(void)
 	if (IS_ERR(dev))
 		goto fail1;
 
+	sema_init(&my_device_1->char_sem, 1);
 	cdev_init(&my_device_1->char_device, &sops);
 
 	ret = cdev_add(&my_device_1->char_device, device_number, 1);
